@@ -1,0 +1,106 @@
+unit Unit1;
+
+{$mode objfpc}{$H+}
+
+interface
+
+uses
+  Classes, SysUtils, Forms, Controls, Dialogs,
+  StdCtrls, ExtCtrls, EditBtn, DateUtils;
+
+type
+  { структура одного будильника }
+  TAlarm = record
+    Day  : Integer;   // 1..7 (Пн=1,…Вс=7)
+    Time : TDateTime; // только время
+  end;
+
+  { TForm1 }
+  TForm1 = class(TForm)
+    BtnAdd       : TButton;
+    ComboDay     : TComboBox;
+    ListAlarms   : TListBox;
+    TimeEditAlarm: TTimeEdit;
+    TimerCheck   : TTimer;
+    procedure BtnAddClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure TimerCheckTimer(Sender: TObject);
+  private
+    Alarms: array of TAlarm;   // динамический массив будильников
+    procedure AddToList(const A: TAlarm);
+  public
+  end;
+
+var
+  Form1: TForm1;
+
+implementation
+
+{$R *.lfm}
+
+const
+  WeekDays: array[1..7] of string =
+   ('Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс');
+
+{----------------------------------------------------------------------}
+
+procedure TForm1.FormCreate(Sender: TObject);
+var
+  i: Integer;
+begin
+  { заполняем выпадающий список дней }
+  ComboDay.Items.Clear;
+  for i := 1 to 7 do
+    ComboDay.Items.Add(WeekDays[i]);
+  ComboDay.ItemIndex := DayOfTheWeek(Date) - 1;  // текущий день недели
+end;
+
+{ добавление строки в ListBox }
+procedure TForm1.AddToList(const A: TAlarm);
+begin
+  ListAlarms.Items.Add(
+    WeekDays[A.Day] + ' ' + FormatDateTime('hh:nn', A.Time));
+end;
+
+procedure TForm1.BtnAddClick(Sender: TObject);
+var
+  A: TAlarm;
+begin
+  if ComboDay.ItemIndex < 0 then
+  begin
+    ShowMessage('Выберите день недели');
+    Exit;
+  end;
+
+  A.Day  := ComboDay.ItemIndex + 1;   // 1..7
+  A.Time := TimeEditAlarm.Time;
+
+  { добавляем в массив }
+  SetLength(Alarms, Length(Alarms) + 1);
+  Alarms[High(Alarms)] := A;
+
+  AddToList(A);                       { выводим на форму }
+end;
+
+procedure TForm1.TimerCheckTimer(Sender: TObject);
+var
+  i, CurDay : Integer;
+  CurTime   : string;
+begin
+  CurDay  := DayOfTheWeek(Date);          { 1..7 }
+  CurTime := FormatDateTime('hh:nn', Time);
+
+  for i := High(Alarms) downto 0 do       { проходим с конца, чтобы удобно удалять }
+    if (Alarms[i].Day = CurDay) and
+       (FormatDateTime('hh:nn', Alarms[i].Time) = CurTime) then
+    begin
+      ShowMessage('Будильник: ' +
+        WeekDays[CurDay] + ' ' + CurTime);
+
+      { удаляем сработавший будильник из массива и списка }
+      ListAlarms.Items.Delete(i);
+      Alarms.Delete(i);
+    end;
+end;
+
+end.
